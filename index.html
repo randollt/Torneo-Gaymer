@@ -240,6 +240,34 @@
   .sync-indicator { font-size: 10px; color: #7fa8c8; text-align: center; margin-top: 8px; }
   .sync-indicator.syncing { color: #f39c12; }
   .sync-indicator.synced  { color: #2ecc71; }
+  .btn-add {
+    margin-top: 8px; width: 100%;
+    background: #8e44ad; border: none; border-radius: 8px;
+    padding: 10px; color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px; font-weight: 800; letter-spacing: 1px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-add:hover { background: #6c3483; }
+  .btn-add:disabled { background: #3a2a4a; color: #7a5a9a; cursor: not-allowed; }
+  .btn-delete {
+    margin-top: 8px; width: 100%;
+    background: transparent; border: 1px solid #e74c3c; border-radius: 8px;
+    padding: 8px; color: #e74c3c;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-delete:hover { background: #e74c3c; color: #fff; }
+  .btn-delete:disabled { border-color: #3a2020; color: #5a3030; cursor: not-allowed; }
+  .add-name-row { display: flex; gap: 8px; margin-top: 8px; align-items: stretch; }
+  .add-name-row input { flex: 1; margin-top: 0 !important; }
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700; color: #4a6a84;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-top: 16px; display: block;
+  }
 </style>
 </head>
 <body>
@@ -337,7 +365,18 @@
   </div>
 
   <button class="btn-apply" id="btn-apply" onclick="applyChanges()" disabled>✅ Guardar en Firebase</button>
+  <button class="btn-delete" id="btn-delete" onclick="deleteTeam()" disabled>🗑️ Eliminar este equipo</button>
+
   <hr class="sep">
+
+  <span class="section-label">➕ Agregar nuevo equipo</span>
+  <div class="add-name-row">
+    <input type="text" id="new-team-name" placeholder="Nombre del equipo...">
+  </div>
+  <button class="btn-add" id="btn-add" onclick="addTeam()" disabled>➕ Agregar equipo</button>
+
+  <hr class="sep">
+
   <button class="btn-sort" id="btn-sort" onclick="sortAndSave()" disabled>🔃 Reordenar por puntos</button>
   <button class="btn-login-editor" onclick="showLogin()">🔐 Iniciar sesión para editar</button>
   <div class="sync-indicator" id="sync-status">⏳ Conectando con Firebase...</div>
@@ -371,6 +410,19 @@ const db   = getDatabase(app);
 const auth = getAuth(app);
 const dbRef = ref(db, "apertura/zonaA");
 
+// ── Paleta de colores para escudos nuevos ──
+const PALETTE = [
+  ["#e74c3c","#c0392b"], ["#3498db","#2980b9"], ["#2ecc71","#27ae60"],
+  ["#9b59b6","#8e44ad"], ["#e67e22","#d35400"], ["#1abc9c","#16a085"],
+  ["#f1c40f","#f39c12"], ["#e91e63","#c2185b"], ["#00bcd4","#0097a7"],
+  ["#ff5722","#e64a19"], ["#607d8b","#455a64"], ["#8bc34a","#689f38"],
+];
+
+function makeShield(letter, colorIdx) {
+  const [fill, stroke] = PALETTE[colorIdx % PALETTE.length];
+  return `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 L36 10 L36 26 Q36 36 20 40 Q4 36 4 26 L4 10 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><text x="20" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff" font-family="sans-serif">${letter}</text></svg>`;
+}
+
 // ── Shields SVG ──
 const shields = {
   Keko:  `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 L36 10 L36 26 Q36 36 20 40 Q4 36 4 26 L4 10 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/><path d="M4 18 L36 18" stroke="#fff" stroke-width="2.5" opacity="0.3"/><text x="20" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff" font-family="sans-serif">K</text></svg>`,
@@ -379,6 +431,7 @@ const shields = {
   Manu:  `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 L36 10 L36 26 Q36 36 20 40 Q4 36 4 26 L4 10 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/><path d="M4 10 L20 22 L36 10" stroke="#fff" stroke-width="2" fill="none" opacity="0.3"/><text x="20" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff" font-family="sans-serif">M</text></svg>`,
   Juanca:`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 L36 10 L36 26 Q36 36 20 40 Q4 36 4 26 L4 10 Z" fill="#e67e22" stroke="#d35400" stroke-width="1.5"/><path d="M8 8 L32 32 M32 8 L8 32" stroke="#fff" stroke-width="2" opacity="0.2"/><text x="20" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff" font-family="sans-serif">J</text></svg>`,
   Brai:  `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 L36 10 L36 26 Q36 36 20 40 Q4 36 4 26 L4 10 Z" fill="#1abc9c" stroke="#16a085" stroke-width="1.5"/><polygon points="20,8 24,18 34,18 26,24 29,34 20,28 11,34 14,24 6,18 16,18" fill="#fff" opacity="0.25"/><text x="20" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff" font-family="sans-serif">B</text></svg>`,
+  Hebe:  `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 L36 10 L36 26 Q36 36 20 40 Q4 36 4 26 L4 10 Z" fill="#e91e63" stroke="#c2185b" stroke-width="1.5"/><path d="M12 14 Q20 8 28 14 Q20 20 12 26 Q20 32 28 26" stroke="#fff" stroke-width="1.8" fill="none" opacity="0.4"/><text x="20" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff" font-family="sans-serif">H</text></svg>`,
 };
 
 const DEFAULT_TEAMS = [
@@ -388,6 +441,7 @@ const DEFAULT_TEAMS = [
   { name:"Manu",   pts:0, j:0, g:0, e:0, p:0, gf:0, gc:0, ul:["E","E","E","E","E"] },
   { name:"Juanca", pts:0, j:0, g:0, e:0, p:0, gf:0, gc:0, ul:["E","E","E","E","E"] },
   { name:"Brai",   pts:0, j:0, g:0, e:0, p:0, gf:0, gc:0, ul:["E","E","E","E","E"] },
+  { name:"Hebe",   pts:0, j:0, g:0, e:0, p:0, gf:0, gc:0, ul:["E","E","E","E","E"] },
 ];
 
 let teams = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
@@ -395,8 +449,13 @@ let isAdmin = false;
 
 // ── Helpers UI ──
 function getSVG(name) {
-  const svg = shields[name] || shields["Keko"];
-  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  if (!shields[name]) {
+    // Generar escudo automático para equipos nuevos
+    const letter = (name || "?")[0].toUpperCase();
+    const colorIdx = Object.keys(shields).length;
+    shields[name] = makeShield(letter, colorIdx);
+  }
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(shields[name])))}`;
 }
 function getDiff(t) { return t.gf - t.gc; }
 function posClass(i) { return i===0 ? "p1" : i<3 ? "pmid" : "plow"; }
@@ -418,8 +477,10 @@ function setSyncStatus(state) {
 
 function setAdminUI(logged) {
   isAdmin = logged;
-  document.getElementById("btn-apply").disabled = !logged;
-  document.getElementById("btn-sort").disabled  = !logged;
+  document.getElementById("btn-apply").disabled  = !logged;
+  document.getElementById("btn-sort").disabled   = !logged;
+  document.getElementById("btn-add").disabled    = !logged;
+  document.getElementById("btn-delete").disabled = !logged;
   document.getElementById("btn-logout").style.display = logged ? "block" : "none";
   const status = document.getElementById("auth-status");
   if (logged) {
@@ -564,6 +625,40 @@ window.sortAndSave = async function() {
   await saveToFirebase();
   renderTable();
   showToast("🔃 Reordenado y guardado");
+};
+
+// ── Agregar equipo ──
+window.addTeam = async function() {
+  if (!isAdmin) return;
+  const nameInput = document.getElementById("new-team-name");
+  const name = nameInput.value.trim();
+  if (!name) { showToast("⚠️ Escribí un nombre primero", "#e67e22"); return; }
+  if (teams.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+    showToast("⚠️ Ya existe un equipo con ese nombre", "#e67e22"); return;
+  }
+  teams.push({ name, pts:0, j:0, g:0, e:0, p:0, gf:0, gc:0, ul:["E","E","E","E","E"] });
+  await saveToFirebase();
+  renderTable();
+  nameInput.value = "";
+  // Seleccionar el nuevo equipo en el editor
+  document.getElementById("sel-team").value = teams.length - 1;
+  loadTeam();
+  showToast(`✅ "${name}" agregado`);
+};
+
+// ── Eliminar equipo ──
+window.deleteTeam = async function() {
+  if (!isAdmin) return;
+  const i = parseInt(document.getElementById("sel-team").value);
+  if (isNaN(i)) return;
+  const name = teams[i].name;
+  if (!confirm(`¿Seguro que querés eliminar a "${name}"? Esta acción no se puede deshacer.`)) return;
+  teams.splice(i, 1);
+  await saveToFirebase();
+  renderTable();
+  document.getElementById("sel-team").value = 0;
+  loadTeam();
+  showToast(`🗑️ "${name}" eliminado`, "#e74c3c");
 };
 
 // Cerrar login con Escape
